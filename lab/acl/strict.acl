@@ -1,0 +1,34 @@
+# LAB: 最小权限示例（加固对照）
+# device1 只能碰自己的设备主题
+# operator 能看 factory 状态，但不能读 token
+# attacker 几乎什么都不能做（用来演示被拒）
+# admin 运维账号，仍建议生产环境再收紧
+
+user device1
+topic readwrite home/device1/#
+topic read home/broadcast
+
+user operator
+topic read factory/status/#
+topic read home/broadcast
+topic write factory/cmd/operator/#
+
+user lab
+topic readwrite lab/#
+topic read home/broadcast
+
+user admin
+topic readwrite $SYS/#
+topic readwrite #
+
+user attacker
+topic read lab/public
+
+user test
+topic readwrite lab/test/#
+
+user user
+topic readwrite lab/user/#
+
+user mqtt
+topic readwrite lab/mqtt/#

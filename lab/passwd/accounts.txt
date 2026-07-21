@@ -1,0 +1,10 @@
+# LAB ONLY — weak credentials for authorized local testing
+# format: username password
+lab lab
+admin admin
+test test
+user password
+mqtt mqtt
+device1 device1
+attacker attacker
+operator operator

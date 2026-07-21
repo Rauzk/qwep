@@ -1,0 +1,29 @@
+# LAB: intentionally OVER-PERMISSIVE ACL
+# 所有人都能读写几乎所有主题，等于没做隔离
+
+user lab
+topic readwrite #
+
+user admin
+topic readwrite #
+
+user test
+topic readwrite #
+
+user user
+topic readwrite #
+
+user mqtt
+topic readwrite #
+
+user device1
+topic readwrite #
+
+user attacker
+topic readwrite #
+
+user operator
+topic readwrite #
+
+# 匿名（如果开了）也能扫全站
+pattern readwrite #
