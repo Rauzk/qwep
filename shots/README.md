@@ -22,3 +22,7 @@
 export DISPLAY=:99
 bash ../lab/scripts/capture-key-shots.sh
 ```
+
+本目录截图属于简陋靶场实验记录。
+
+同步批次: git commit 更新

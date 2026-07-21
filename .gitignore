@@ -1,3 +1,4 @@
+# Mosquitto 简陋靶场 — 本地抓包不入库
 lab/pcap/*.pcap
 **/__pycache__/
 *.pyc
