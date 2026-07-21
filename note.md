@@ -1,24 +1,17 @@
 # Mosquitto MQTT 靶场：从匿名到 TLS 的一组安全小实验
 
-> **仓库**：https://github.com/Rauzk/qwep  
-> 本文与截图、靶场脚本在同一仓库，clone 即可对照复现。
+> 仓库：https://github.com/Rauzk/qwep（笔记、截图、靶场脚本都在里面）
 
 这是个**简陋靶场**：配置故意写得不安全，用来做入门对照，不是成品安全方案，也别当生产环境用。  
-本文是授权本地实验笔记，示例 broker 地址为 `192.168.2.127`（按你本机/靶场 IP 改）。  
-只在自己搭的环境里做，别拿去扫别人的 MQTT。
+只在自己搭的环境里做，别拿去扫别人的 MQTT。  
+文中示例 broker 地址是 `192.168.2.127`，按你本机实际 IP 改就行。
 
-目录：
+clone 下来后，目录大致是：
 
 ```text
-practice-all/cl_mqtt/
-  note.md                 # 本篇
-  shots/                  # 截图（与正文图注一一对应）
-  lab/
-    profiles/             # 5 套配置：漏洞态 / 认证 / 宽ACL / 严ACL / TLS对照
-    acl/                  # wide.acl / strict.acl
-    passwd/accounts.txt   # 弱口令清单
-    scripts/              # 安装、切换、种数据
-    certs/                # 自签 CA + server 证书
+note.md           本篇
+shots/            实验截图
+lab/              配置、ACL、脚本、证书、弱口令
 ```
 
 ---
@@ -31,17 +24,11 @@ practice-all/cl_mqtt/
 sudo apt install -y mosquitto mosquitto-clients openssl tcpdump tshark
 ```
 
-实验文件在：
-
-```text
-/home/parallels/Documents/practice-all/cl_mqtt/lab
-```
-
-一键安装（会备份旧 conf.d，生成口令和证书，默认切入漏洞态）：
+进入仓库目录后一键安装（会备份旧 conf.d，生成口令和证书，默认切入漏洞态）：
 
 ```sh
-sudo bash /home/parallels/Documents/practice-all/cl_mqtt/lab/scripts/install-lab.sh 01-insecure
-bash /home/parallels/Documents/practice-all/cl_mqtt/lab/scripts/seed-retained.sh
+sudo bash lab/scripts/install-lab.sh 01-insecure
+bash lab/scripts/seed-retained.sh
 ```
 
 看监听：
@@ -163,7 +150,7 @@ mosquitto_sub -h 192.168.2.127 -p 1883 -u lab -P wrong -t '#' -W 2
 
 `02-auth-weak` 只解决了“完全不认人”，没解决“口令太烂”和“登录后权限过大”。  
 口令文件在 `/etc/mosquitto/lab/passwd`，明文清单在 `lab/passwd/accounts.txt`。  
-写文章时可以说：认证要开，但别用 admin/admin；还要配合 ACL 和 TLS。
+结论很简单：认证要开，但别用 admin/admin 这种口令；后面还要配 ACL 和 TLS。
 
 ---
 
@@ -492,57 +479,21 @@ bash lab/scripts/seed-retained.sh
 
 ---
 
-## 十、怎么串成一篇完整故事
+## 十、加固建议
 
-如果作业只要求 4 个实验，建议这条线：
+做完上面几轮对照，生产侧可以按这个清单收：
 
-1. 匿名 + `#` 遍历（第二节）  
-2. 明文抓包（第四节）  
-3. 消息伪造（第五节）  
-4. 认证对照（第三节），有余力加 ACL 宽/严（第六节）
-
-要写长文/发笔记，按本文二到九节全做即可。截图文件名已经按章节排好，都在 `shots/`：
-
-```text
-01-env-ports.png
-02-anon-hash.png
-03-auth-reject.png
-04-auth-lab.png
-05-pcap-connect.png   # 关键：明文账号+payload
-06-forge-before.png
-07-forge-after.png    # 关键：forged 状态
-08-acl-wide.png
-09-acl-strict.png
-10-qos.png            # 关键：qos=0/1/2 仍明文
-11-tls-plain.png      # 关键：1883 可解
-12-tls-cipher.png     # 关键：8883 不可解
-13-dos.png
-```
-
-补拍关键图（不占 GNOME 前台，在 Xvfb `:99`）：
-
-```sh
-export DISPLAY=:99
-bash lab/scripts/capture-key-shots.sh
-```
-
----
-
-## 十一、加固清单（给报告结尾用）
-
-```text
-1. allow_anonymous false
-2. 强口令，最好再上客户端证书
-3. ACL 按设备/角色最小权限，禁止普通账号订 #
-4. 生产只暴露 8883（TLS），不要对不可信网络裸奔 1883
-5. 普通用户不要给 $SYS
+1. `allow_anonymous false`
+2. 强口令，条件允许再上客户端证书
+3. ACL 按设备/角色最小权限，普通账号不要给 `#`
+4. 生产只暴露 `8883`（TLS），不要对不可信网络裸奔 `1883`
+5. 普通用户不要给 `$SYS`
 6. 限制连接数、包大小，日志和监控跟上
 7. 控制类消息在应用层再做鉴权或签名，别只信“能 pub 的就是自己人”
-```
 
 ---
 
-## 十二、常用命令速查
+## 十一、常用命令速查
 
 ```sh
 # 状态
@@ -567,27 +518,4 @@ mosquitto_sub -h 192.168.2.127 -p 8883 -u lab -P lab \
 # 抓包
 sudo tcpdump -i any -n -s 0 -w lab/pcap/x.pcap 'tcp port 1883'
 tshark -r lab/pcap/x.pcap -Y mqtt
-```
-
----
-
-## 十三、环境自检结果（搭建时已跑通）
-
-| 检查项 | 结果 |
-|---|---|
-| `01-insecure` 匿名 `#` | 可读 retained 敏感主题 |
-| `02-auth-weak` 匿名 | `not authorised` |
-| `02-auth-weak` lab/lab | 可订阅 |
-| `03-acl-wide` attacker + `#` | 仍可读 `factory/secret/token` |
-| `04-acl-strict` device1 写自己主题 | 成功 |
-| `04-acl-strict` device1 读工厂密钥 | 收不到 |
-| `05-tls-compare` 8883 + ca.crt | 收发正常 |
-| 默认回到 `01-insecure` | 已恢复，便于后续截图 |
-
-当前默认：
-
-```text
-profile = 01-insecure
-listen  = 0.0.0.0:1883 , 0.0.0.0:9001
-seed    = 已写入 lab/ factory/ home/ sonoff/ owntracks/ 等 retained
 ```
