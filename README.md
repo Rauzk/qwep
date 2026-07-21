@@ -2,7 +2,7 @@
 
 这是个**简陋靶场**：配置故意写得不安全，用来做入门对照，不是成品安全方案，也别当生产环境用。
 
-本仓库是 **授权本地实验** 用的 Mosquitto MQTT 靶场与笔记：匿名访问、弱口令、明文抓包、ACL 过宽、消息伪造、QoS、TLS 对照、轻量 DoS 观察。
+本仓库是 **授权本地实验** 用的 Mosquitto MQTT 靶场与笔记：匿名访问、**mqtt-pwn 主题枚举与口令爆破**、弱口令、明文抓包、ACL 过宽、消息伪造、QoS、TLS 对照、轻量 DoS 观察。
 
 > 只在自己搭的环境里做，不要拿去扫别人的 broker。
 
@@ -22,6 +22,17 @@
 sudo bash lab/scripts/install-lab.sh 01-insecure
 bash lab/scripts/seed-retained.sh
 bash lab/scripts/lab-status.sh
+```
+
+mqtt-pwn（本机路径默认 `/tmp/mqtt-pwn`，需 docker Postgres 5431）：
+
+```sh
+# 漏洞态：discovery
+bash lab/scripts/demo-mqtt-pwn.sh lab/wordlists/usernames.txt lab/wordlists/passwords.txt discovery
+
+# 关匿名后：爆破
+sudo bash lab/scripts/switch-profile.sh 02-auth-weak
+bash lab/scripts/demo-mqtt-pwn.sh lab/wordlists/usernames.txt lab/wordlists/passwords.txt brute
 ```
 
 切换实验 profile：

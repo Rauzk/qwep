@@ -15,6 +15,8 @@
 | 11-tls-plain.png | 1883 对照 | this-is-plain 可解 |
 | 12-tls-cipher.png | 8883 对照 | mqtt 空；搜不到 this-is-tls |
 | 13-dos.png | 轻量 DoS | 连接数/日志异常 |
+| 14-mqtt-pwn-discovery.png | mqtt-pwn 枚举 | topics/messages 表 |
+| 15-mqtt-pwn-brute.png | mqtt-pwn 爆破 | Found valid credentials |
 
 关键图补拍（Xvfb `:99`，不占前台）：
 

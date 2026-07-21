@@ -2,6 +2,17 @@
 
 简陋靶场，配置故意不安全，仅供入门实验对照，勿用于生产。
 
+## mqtt-pwn
+
+```sh
+# 依赖：/tmp/mqtt-pwn + docker compose db(5431)
+bash scripts/demo-mqtt-pwn.sh wordlists/usernames.txt wordlists/passwords.txt discovery
+bash scripts/demo-mqtt-pwn.sh wordlists/usernames.txt wordlists/passwords.txt brute
+```
+
+交互壳：`bash /tmp/mqtt-pwn/run_mqtt_pwn.sh`  
+常用：`connect` / `discovery` / `topics` / `messages` / `bruteforce` / `system_info`
+
 ## 安装
 
 ```sh
